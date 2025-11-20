@@ -343,15 +343,20 @@ export const SlingshotCanvas: React.FC = () => {
          gsap.to(handRef.current, { opacity: isDetected ? 1 : 0, duration: 0.2 });
       }
 
-      // State Machine
-      if (isDetected) {
-        if (isPinching && !state.current.isDrawing) {
-          startDrawing(cursor.x, cursor.y);
-        } else if (isPinching && state.current.isDrawing) {
-          updateDrawing(cursor.x, cursor.y);
-        } else if (!isPinching && state.current.isDrawing) {
-          endDrawing();
-        }
+      // State Machine with fail-safe release on lost detection
+      if (isDetected && isPinching && !state.current.isDrawing) {
+        startDrawing(cursor.x, cursor.y);
+        return;
+      }
+
+      if (isDetected && isPinching && state.current.isDrawing) {
+        updateDrawing(cursor.x, cursor.y);
+        return;
+      }
+
+      // Release if pinch opens OR detection is lost while drawing
+      if (state.current.isDrawing && (!isPinching || !isDetected)) {
+        endDrawing();
       }
     },
     [isHandMode, startDrawing, updateDrawing, endDrawing]
