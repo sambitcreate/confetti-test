@@ -31,7 +31,7 @@ export const SlingshotCanvas: React.FC = () => {
   const instructionsRef = useRef<HTMLElement>(null);
 
   // State
-  const [isHandMode, setIsHandMode] = useState(true);
+  const [isHandMode, setIsHandMode] = useState(false);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   // Logic Refs (Mutable state for animation loop)
