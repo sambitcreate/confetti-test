@@ -1,0 +1,7 @@
+{
+  "name": "Gesture Slingshot Cannon",
+  "description": "A physics-based confetti cannon controlled by mouse or hand gestures using MediaPipe.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
