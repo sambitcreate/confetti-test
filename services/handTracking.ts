@@ -1,27 +1,40 @@
 import {
   FilesetResolver,
   HandLandmarker,
-  HandLandmarkerResult
+  HandLandmarkerResult,
 } from "@mediapipe/tasks-vision";
 
 let handLandmarker: HandLandmarker | undefined;
-let runningMode: "IMAGE" | "VIDEO" = "VIDEO";
+let handLandmarkerPromise: Promise<HandLandmarker> | null = null;
 
-export const createHandLandmarker = async () => {
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-  );
-  
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-      delegate: "GPU"
-    },
-    runningMode: runningMode,
-    numHands: 1
-  });
-  
-  return handLandmarker;
+export const createHandLandmarker = async (): Promise<HandLandmarker> => {
+  if (handLandmarker) return handLandmarker;
+  if (handLandmarkerPromise) return handLandmarkerPromise;
+
+  handLandmarkerPromise = (async () => {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm"
+    );
+
+    const instance = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath:
+          "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate: "GPU",
+      },
+      runningMode: "VIDEO",
+      numHands: 1,
+    });
+
+    handLandmarker = instance;
+    return instance;
+  })();
+
+  try {
+    return await handLandmarkerPromise;
+  } finally {
+    handLandmarkerPromise = null;
+  }
 };
 
 export const detectHands = (

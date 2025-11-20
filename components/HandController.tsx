@@ -1,6 +1,12 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createHandLandmarker, detectHands, getCursorPosition, isPinching } from '../services/handTracking';
-import { HandInputData } from '../utils/types';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+import {
+  createHandLandmarker,
+  detectHands,
+  getCursorPosition,
+  isPinching,
+} from '@/services/handTracking';
+import { HandInputData } from '@/utils/types';
 
 interface HandControllerProps {
     onUpdate: (data: HandInputData) => void;
@@ -10,21 +16,22 @@ interface HandControllerProps {
 export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enabled }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const requestRef = useRef<number>();
+    const isRequestingPermissionRef = useRef(false);
     const [isLoaded, setIsLoaded] = useState(false);
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
     const predictWebcam = useCallback(() => {
         if (!videoRef.current) return;
-        
+
         const startTimeMs = performance.now();
         const results = detectHands(videoRef.current, startTimeMs);
-        
+
         if (results && results.landmarks && results.landmarks.length > 0) {
             const landmarks = results.landmarks[0];
             const pinching = isPinching(landmarks);
             const cursor = getCursorPosition(landmarks, window.innerWidth, window.innerHeight);
-            
+
             onUpdate({
                 cursor,
                 isPinching: pinching,
@@ -42,6 +49,9 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
     }, [onUpdate]);
 
     const requestCameraAccess = useCallback(async () => {
+        if (isRequestingPermissionRef.current) return;
+
+        isRequestingPermissionRef.current = true;
         setIsRequestingPermission(true);
         setPermissionError(null);
         
@@ -108,14 +118,13 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
             
             setPermissionError(errorMessage);
         } finally {
+            isRequestingPermissionRef.current = false;
             setIsRequestingPermission(false);
         }
     }, [predictWebcam]);
 
     useEffect(() => {
         if (!enabled) return;
-
-        let active = true;
 
         const init = async () => {
             await requestCameraAccess();
@@ -124,20 +133,20 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
         init();
 
         return () => {
-            active = false;
             if (videoRef.current) {
                 videoRef.current.removeEventListener("loadeddata", predictWebcam);
                 if (videoRef.current.srcObject) {
                     const stream = videoRef.current.srcObject as MediaStream;
                     const tracks = stream.getTracks();
                     tracks.forEach(track => track.stop());
+                    videoRef.current.srcObject = null;
                 }
             }
             if (requestRef.current) {
                 cancelAnimationFrame(requestRef.current);
+                requestRef.current = undefined;
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, requestCameraAccess, predictWebcam]);
 
     if (!enabled) return null;

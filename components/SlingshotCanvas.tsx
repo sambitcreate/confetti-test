@@ -1,19 +1,22 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Observer } from "gsap/Observer";
-import { HandController } from "./HandController";
+import { HandController } from "@/components/HandController";
 import {
   PRELOAD_IMAGES_SRC,
   EXPLOSION_IMAGES_SRC,
   AssetMap,
   HandInputData,
-} from "../utils/types";
+} from "@/utils/types";
 
 gsap.registerPlugin(Observer);
 
 // Helper to clone SVG nodes safely
 const createSVGElement = (tag: string) =>
   document.createElementNS("http://www.w3.org/2000/svg", tag);
+
+const pickRandomKey = (keys: string[]) =>
+  keys[Math.floor(Math.random() * keys.length)];
 
 export const SlingshotCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,13 +56,16 @@ export const SlingshotCanvas: React.FC = () => {
 
   // --- Initialization ---
   useEffect(() => {
+    let isMounted = true;
+
     // Preload Images
     const loadImages = async () => {
       const load = (src: string) =>
-        new Promise<HTMLImageElement>((resolve) => {
+        new Promise<HTMLImageElement | null>((resolve) => {
           const img = new Image();
           img.src = src;
           img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
         });
 
       const imgMap: AssetMap = {};
@@ -70,15 +76,21 @@ export const SlingshotCanvas: React.FC = () => {
       await Promise.all([
         ...PRELOAD_IMAGES_SRC.map(async (p) => {
           const img = await load(p.src);
-          imgMap[p.key] = img;
-          imgKeys.push(p.key);
+          if (img) {
+            imgMap[p.key] = img;
+            imgKeys.push(p.key);
+          }
         }),
         ...EXPLOSION_IMAGES_SRC.map(async (p) => {
           const img = await load(p.src);
-          expMap[p.key] = img;
-          expKeys.push(p.key);
+          if (img) {
+            expMap[p.key] = img;
+            expKeys.push(p.key);
+          }
         }),
       ]);
+
+      if (!isMounted) return;
 
       state.current.imageMap = imgMap;
       state.current.imageKeys = imgKeys;
@@ -95,13 +107,17 @@ export const SlingshotCanvas: React.FC = () => {
       ySetter.current = gsap.quickTo(handRef.current, "y", { duration: 0.1 });
       gsap.set(handRef.current, { xPercent: -50, yPercent: -50 });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // --- Animation & Logic Methods ---
 
   const createExplosion = useCallback(
     (x: number, y: number, distance: number = 100) => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || !state.current.explosionKeys.length) return;
 
       const count = Math.round(gsap.utils.clamp(3, 40, distance / 10));
       const angleSpread = Math.PI * 2;
@@ -109,7 +125,7 @@ export const SlingshotCanvas: React.FC = () => {
       const sizeRange = gsap.utils.mapRange(0, 500, 20, 60, distance);
 
       for (let i = 0; i < count; i++) {
-        const randomKey = gsap.utils.random(state.current.explosionKeys);
+        const randomKey = pickRandomKey(state.current.explosionKeys);
         const original = state.current.explosionMap[randomKey];
         if (!original) continue;
 
@@ -152,52 +168,64 @@ export const SlingshotCanvas: React.FC = () => {
     []
   );
 
-  const startDrawing = useCallback((x: number, y: number) => {
-    if (state.current.isDrawing || !canvasRef.current) return;
+  const startDrawing = useCallback(
+    (x: number, y: number) => {
+      if (
+        state.current.isDrawing ||
+        !canvasRef.current ||
+        !assetsLoaded ||
+        !state.current.imageKeys.length
+      ) {
+        return;
+      }
 
-    state.current.isDrawing = true;
-    state.current.startX = x;
-    state.current.startY = y;
+      const randomKey = pickRandomKey(state.current.imageKeys);
+      const original = state.current.imageMap[randomKey];
+      if (!original) return;
 
-    if (instructionsRef.current) gsap.to(instructionsRef.current, { opacity: 0, duration: 0.2 });
-    if (dragRef.current) gsap.set(dragRef.current, { opacity: 1 });
-    if (handleRef.current) gsap.set(handleRef.current, { opacity: 1 });
-    if (rockRef.current) gsap.set(rockRef.current, { opacity: 0 });
+      state.current.isDrawing = true;
+      state.current.startX = x;
+      state.current.startY = y;
 
-    // SVG Line
-    const line = createSVGElement("line") as SVGLineElement;
-    line.setAttribute("x1", x.toString());
-    line.setAttribute("y1", y.toString());
-    line.setAttribute("x2", x.toString());
-    line.setAttribute("y2", y.toString());
-    line.setAttribute("stroke", "#fffce1");
-    line.setAttribute("stroke-width", "2");
-    line.setAttribute("stroke-dasharray", "4");
-    state.current.currentLine = line;
+      if (instructionsRef.current) gsap.to(instructionsRef.current, { opacity: 0, duration: 0.2 });
+      if (dragRef.current) gsap.set(dragRef.current, { opacity: 1 });
+      if (handleRef.current) gsap.set(handleRef.current, { opacity: 1 });
+      if (rockRef.current) gsap.set(rockRef.current, { opacity: 0 });
 
-    // SVG Circle (Anchor)
-    const circle = createSVGElement("circle") as SVGCircleElement;
-    circle.setAttribute("cx", x.toString());
-    circle.setAttribute("cy", y.toString());
-    circle.setAttribute("r", "30");
-    circle.setAttribute("fill", "#0e100f");
-    state.current.circle = circle;
+      // SVG Line
+      const line = createSVGElement("line") as SVGLineElement;
+      line.setAttribute("x1", x.toString());
+      line.setAttribute("y1", y.toString());
+      line.setAttribute("x2", x.toString());
+      line.setAttribute("y2", y.toString());
+      line.setAttribute("stroke", "#fffce1");
+      line.setAttribute("stroke-width", "2");
+      line.setAttribute("stroke-dasharray", "4");
+      state.current.currentLine = line;
 
-    // Random Content Image
-    const randomKey = gsap.utils.random(state.current.imageKeys);
-    const original = state.current.imageMap[randomKey];
-    const clone = createSVGElement("image") as SVGImageElement;
-    clone.setAttribute("x", (x - 25).toString());
-    clone.setAttribute("y", (y - 25).toString());
-    clone.setAttribute("width", "50");
-    clone.setAttribute("height", "50");
-    clone.setAttributeNS("http://www.w3.org/1999/xlink", "href", original.src);
-    state.current.startImage = clone;
+      // SVG Circle (Anchor)
+      const circle = createSVGElement("circle") as SVGCircleElement;
+      circle.setAttribute("cx", x.toString());
+      circle.setAttribute("cy", y.toString());
+      circle.setAttribute("r", "30");
+      circle.setAttribute("fill", "#0e100f");
+      state.current.circle = circle;
 
-    canvasRef.current.appendChild(line);
-    canvasRef.current.appendChild(circle);
-    canvasRef.current.appendChild(clone);
-  }, []);
+      // Random Content Image
+      const clone = createSVGElement("image") as SVGImageElement;
+      clone.setAttribute("x", (x - 25).toString());
+      clone.setAttribute("y", (y - 25).toString());
+      clone.setAttribute("width", "50");
+      clone.setAttribute("height", "50");
+      clone.setAttributeNS("http://www.w3.org/1999/xlink", "href", original.src);
+      state.current.startImage = clone;
+
+      canvasRef.current.appendChild(line);
+      canvasRef.current.appendChild(circle);
+      canvasRef.current.appendChild(clone);
+    },
+    [assetsLoaded]
+  );
 
   const updateDrawing = useCallback((x: number, y: number) => {
     if (
@@ -211,9 +239,10 @@ export const SlingshotCanvas: React.FC = () => {
     const dx = x - state.current.startX;
     const dy = y - state.current.startY;
     let distance = Math.sqrt(dx * dx + dy * dy);
+    const safeDistance = Math.max(distance, 0.001);
 
     // Visual logic from original script
-    let shrink = (distance - 30) / distance;
+    let shrink = (safeDistance - 30) / safeDistance;
     let x2 = state.current.startX + dx * shrink;
     let y2 = state.current.startY + dy * shrink;
 
@@ -396,6 +425,11 @@ export const SlingshotCanvas: React.FC = () => {
         <p className="text-sm uppercase tracking-widest metallic-white mb-4">
            {isHandMode ? 'Pinch to Drag' : 'Click and Drag'}
         </p>
+        {!assetsLoaded && (
+          <div className="text-xs text-zinc-200/80 mb-3">
+            Loading confetti assets...
+          </div>
+        )}
         <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 leading-tight">
           CONFETTI<br />CANNON
         </h1>

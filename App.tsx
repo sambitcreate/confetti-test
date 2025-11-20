@@ -1,6 +1,6 @@
 import React from 'react';
-import { SlingshotCanvas } from './components/SlingshotCanvas';
-import { Button } from './components/ui/button';
+import { SlingshotCanvas } from '@/components/SlingshotCanvas';
+import { Button } from '@/components/ui/button';
 
 const App: React.FC = () => {
   return (
