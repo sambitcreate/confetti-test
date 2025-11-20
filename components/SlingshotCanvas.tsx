@@ -390,7 +390,7 @@ export const SlingshotCanvas: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden ${
+      className={`relative isolate z-10 w-full h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden ${
         !isHandMode ? "no-cursor" : ""
       }`}
     >
@@ -471,7 +471,7 @@ export const SlingshotCanvas: React.FC = () => {
       {/* SVG Canvas for Line Drawing */}
       <svg
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
+        className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
       ></svg>
 
       {/* Interaction Proxy Layer */}

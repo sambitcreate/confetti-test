@@ -17,7 +17,9 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
     const videoRef = useRef<HTMLVideoElement>(null);
     const requestRef = useRef<number>();
     const isRequestingPermissionRef = useRef(false);
+    const loadedDataHandlerRef = useRef<(() => void) | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
@@ -48,12 +50,24 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
         requestRef.current = requestAnimationFrame(predictWebcam);
     }, [onUpdate]);
 
+    const handleVideoLoadedData = useCallback(() => {
+        setIsStreaming(true);
+
+        if (requestRef.current) {
+            cancelAnimationFrame(requestRef.current);
+            requestRef.current = undefined;
+        }
+
+        predictWebcam();
+    }, [predictWebcam]);
+
     const requestCameraAccess = useCallback(async () => {
         if (isRequestingPermissionRef.current) return;
 
         isRequestingPermissionRef.current = true;
         setIsRequestingPermission(true);
         setPermissionError(null);
+        setIsStreaming(false);
         
         try {
             // Check if running on HTTPS or localhost (required for camera access)
@@ -94,8 +108,19 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             if (videoRef.current) {
+                if (loadedDataHandlerRef.current) {
+                    videoRef.current.removeEventListener("loadeddata", loadedDataHandlerRef.current);
+                }
+
+                loadedDataHandlerRef.current = handleVideoLoadedData;
+
+                if (videoRef.current.srcObject) {
+                    const existingStream = videoRef.current.srcObject as MediaStream;
+                    existingStream.getTracks().forEach(track => track.stop());
+                }
+
                 videoRef.current.srcObject = stream;
-                videoRef.current.addEventListener("loadeddata", predictWebcam);
+                videoRef.current.addEventListener("loadeddata", handleVideoLoadedData);
             }
         } catch (err: any) {
             console.error("Error initializing hand tracking:", err);
@@ -117,11 +142,12 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
             }
             
             setPermissionError(errorMessage);
+            setIsStreaming(false);
         } finally {
             isRequestingPermissionRef.current = false;
             setIsRequestingPermission(false);
         }
-    }, [predictWebcam]);
+    }, [handleVideoLoadedData, predictWebcam]);
 
     useEffect(() => {
         if (!enabled) return;
@@ -134,7 +160,9 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
 
         return () => {
             if (videoRef.current) {
-                videoRef.current.removeEventListener("loadeddata", predictWebcam);
+                if (loadedDataHandlerRef.current) {
+                    videoRef.current.removeEventListener("loadeddata", loadedDataHandlerRef.current);
+                }
                 if (videoRef.current.srcObject) {
                     const stream = videoRef.current.srcObject as MediaStream;
                     const tracks = stream.getTracks();
@@ -146,60 +174,74 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
                 cancelAnimationFrame(requestRef.current);
                 requestRef.current = undefined;
             }
+            setIsStreaming(false);
         };
-    }, [enabled, requestCameraAccess, predictWebcam]);
+    }, [enabled, requestCameraAccess]);
 
     if (!enabled) return null;
 
     return (
-        <div className="fixed top-4 right-4 z-50 flex flex-col items-end pointer-events-none opacity-90">
-            {permissionError && (
-                 <div className="bg-white/10 border border-white/25 text-white p-3 rounded mb-2 text-xs font-semibold max-w-xs backdrop-blur">
-                    <div className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      <span>{permissionError}</span>
+        <>
+            <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+                <div className="absolute inset-0 bg-black" />
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className={`absolute inset-0 h-full w-full object-cover transform -scale-x-100 transition-opacity duration-300 ${
+                        isStreaming ? 'opacity-90' : 'opacity-30'
+                    }`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/70" />
+            </div>
+
+            <div className="fixed top-4 right-4 z-50 flex flex-col items-end gap-2 pointer-events-none opacity-95">
+                {permissionError && (
+                    <div className="bg-white/10 border border-white/25 text-white p-3 rounded text-xs font-semibold max-w-xs backdrop-blur pointer-events-auto shadow-lg">
+                        <div className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                            <span>{permissionError}</span>
+                        </div>
+                        <div className="mt-2 text-xs opacity-90 leading-relaxed">
+                            • Click the camera icon in the address bar<br/>
+                            • Allow camera access<br/>
+                            • Reload this page
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                            <button
+                                onClick={requestCameraAccess}
+                                disabled={isRequestingPermission}
+                                className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
+                            >
+                                {isRequestingPermission ? 'Requesting...' : 'Request Camera'}
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
+                            >
+                                Reload Page
+                            </button>
+                        </div>
                     </div>
-                    <div className="mt-2 text-xs opacity-90 leading-relaxed">
-                        • Click the camera icon in the address bar<br/>
-                        • Allow camera access<br/>
-                        • Reload this page
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                        <button 
-                            onClick={requestCameraAccess}
-                            disabled={isRequestingPermission}
-                            className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
-                        >
-                            {isRequestingPermission ? 'Requesting...' : 'Request Camera'}
-                        </button>
-                        <button 
-                            onClick={() => window.location.reload()}
-                            className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
-                        >
-                            Reload Page
-                        </button>
-                    </div>
-                 </div>
-            )}
-            {!isLoaded && !permissionError && (
-                <div className="bg-white/10 border border-white/25 text-white p-2 rounded mb-2 text-xs font-semibold">
-                    Loading AI Model...
-                </div>
-            )}
-            {isLoaded && (
-                <div className="relative rounded-lg overflow-hidden border border-white/30 w-32 h-24 bg-black shadow-lg">
-                     {/* Video is mirrored for natural interaction */}
-                    <video 
-                        ref={videoRef} 
-                        autoPlay 
-                        playsInline 
-                        className="w-full h-full object-cover transform -scale-x-100"
+                )}
+
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-3 py-1 text-[11px] uppercase tracking-[0.18em] pointer-events-auto">
+                    <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                            isStreaming ? 'bg-white' : 'bg-white/60 animate-pulse'
+                        }`}
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-[10px] metallic-white p-1 text-center">
-                        Pinch to Drag
-                    </div>
+                    <span className="metallic-white">
+                        {permissionError
+                            ? 'Camera blocked'
+                            : isStreaming
+                                ? 'Hand camera live'
+                                : isLoaded
+                                    ? 'Waiting for camera'
+                                    : 'Loading hand AI'}
+                    </span>
                 </div>
-            )}
-        </div>
+            </div>
+        </>
     );
 };
