@@ -17,7 +17,8 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
     const videoRef = useRef<HTMLVideoElement>(null);
     const requestRef = useRef<number>();
     const isRequestingPermissionRef = useRef(false);
-    const loadedDataHandlerRef = useRef<(() => void) | null>(null);
+    const startListenersRef = useRef<string[]>([]);
+    const hasStartedRef = useRef(false);
     const handStateRef = useRef({
         isPinching: false,
         lastCursor: { x: 0, y: 0 },
@@ -67,7 +68,10 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
         requestRef.current = requestAnimationFrame(predictWebcam);
     }, [onUpdate]);
 
-    const handleVideoLoadedData = useCallback(() => {
+    const startStreaming = useCallback(() => {
+        if (hasStartedRef.current) return;
+        hasStartedRef.current = true;
+
         setIsStreaming(true);
 
         if (requestRef.current) {
@@ -125,19 +129,40 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             if (videoRef.current) {
-                if (loadedDataHandlerRef.current) {
-                    videoRef.current.removeEventListener("loadeddata", loadedDataHandlerRef.current);
+                const videoEl = videoRef.current;
+
+                // Remove prior start listeners
+                if (startListenersRef.current.length) {
+                    startListenersRef.current.forEach((evt) =>
+                        videoEl.removeEventListener(evt, startStreaming)
+                    );
                 }
 
-                loadedDataHandlerRef.current = handleVideoLoadedData;
+                // Ensure autoplay-friendly setup
+                videoEl.muted = true;
+                videoEl.playsInline = true;
 
-                if (videoRef.current.srcObject) {
-                    const existingStream = videoRef.current.srcObject as MediaStream;
+                if (videoEl.srcObject) {
+                    const existingStream = videoEl.srcObject as MediaStream;
                     existingStream.getTracks().forEach(track => track.stop());
                 }
 
-                videoRef.current.srcObject = stream;
-                videoRef.current.addEventListener("loadeddata", handleVideoLoadedData);
+                hasStartedRef.current = false;
+                videoEl.srcObject = stream;
+
+                const events = ["loadeddata", "canplay", "playing"];
+                startListenersRef.current = events;
+                events.forEach((evt) =>
+                    videoEl.addEventListener(evt, startStreaming, { once: false })
+                );
+
+                if (videoEl.readyState >= 2) {
+                    startStreaming();
+                } else {
+                    videoEl.play().catch(() => {
+                        // Autoplay may need a user gesture; events above will fire once ready
+                    });
+                }
             }
         } catch (err: any) {
             console.error("Error initializing hand tracking:", err);
@@ -164,7 +189,7 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
             isRequestingPermissionRef.current = false;
             setIsRequestingPermission(false);
         }
-    }, [handleVideoLoadedData, predictWebcam]);
+    }, [predictWebcam, startStreaming]);
 
     useEffect(() => {
         if (!enabled) return;
@@ -177,8 +202,10 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
 
         return () => {
             if (videoRef.current) {
-                if (loadedDataHandlerRef.current) {
-                    videoRef.current.removeEventListener("loadeddata", loadedDataHandlerRef.current);
+                if (startListenersRef.current.length) {
+                    startListenersRef.current.forEach((evt) =>
+                        videoRef.current?.removeEventListener(evt, startStreaming)
+                    );
                 }
                 if (videoRef.current.srcObject) {
                     const stream = videoRef.current.srcObject as MediaStream;
@@ -192,8 +219,10 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
                 requestRef.current = undefined;
             }
             setIsStreaming(false);
+            hasStartedRef.current = false;
+            startListenersRef.current = [];
         };
-    }, [enabled, requestCameraAccess]);
+    }, [enabled, requestCameraAccess, startStreaming]);
 
     if (!enabled) return null;
 
