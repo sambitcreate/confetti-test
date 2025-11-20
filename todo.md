@@ -1,0 +1,4 @@
+- [ ] Search for "Gesture SLingshot" text in the codebase
+- [ ] Identify the file(s) containing this text
+- [ ] Remove or replace the text appropriately
+- [ ] Verify the changes work correctly

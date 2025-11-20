@@ -154,25 +154,27 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
     return (
         <div className="fixed top-4 right-4 z-50 flex flex-col items-end pointer-events-none opacity-90">
             {permissionError && (
-                 <div className="bg-red-500 metallic-white p-3 rounded mb-2 text-xs font-bold max-w-xs">
-                    📷 {permissionError}
-                    <div className="mt-2 text-xs opacity-90">
-                        💡 <strong>How to fix:</strong><br/>
-                        1. Click the camera icon 📷 in your address bar<br/>
-                        2. Select "Allow" for camera access<br/>
-                        3. Reload this page
+                 <div className="bg-white/10 border border-white/25 text-white p-3 rounded mb-2 text-xs font-semibold max-w-xs backdrop-blur">
+                    <div className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span>{permissionError}</span>
+                    </div>
+                    <div className="mt-2 text-xs opacity-90 leading-relaxed">
+                        • Click the camera icon in the address bar<br/>
+                        • Allow camera access<br/>
+                        • Reload this page
                     </div>
                     <div className="flex gap-2 mt-3">
                         <button 
                             onClick={requestCameraAccess}
                             disabled={isRequestingPermission}
-                            className="flex-1 bg-white/20 hover:bg-white/30 disabled:opacity-50 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
+                            className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
                         >
                             {isRequestingPermission ? 'Requesting...' : 'Request Camera'}
                         </button>
                         <button 
                             onClick={() => window.location.reload()}
-                            className="flex-1 bg-white/20 hover:bg-white/30 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
+                            className="flex-1 border border-white/30 bg-white/10 hover:bg-white/20 rounded px-2 py-1 text-center transition-colors pointer-events-auto"
                         >
                             Reload Page
                         </button>
@@ -180,12 +182,12 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
                  </div>
             )}
             {!isLoaded && !permissionError && (
-                <div className="bg-yellow-500 metallic-white p-2 rounded mb-2 text-xs font-bold animate-pulse">
+                <div className="bg-white/10 border border-white/25 text-white p-2 rounded mb-2 text-xs font-semibold">
                     Loading AI Model...
                 </div>
             )}
             {isLoaded && (
-                <div className="relative rounded-lg overflow-hidden border-2 border-green-500 w-32 h-24 bg-black shadow-lg">
+                <div className="relative rounded-lg overflow-hidden border border-white/30 w-32 h-24 bg-black shadow-lg">
                      {/* Video is mirrored for natural interaction */}
                     <video 
                         ref={videoRef} 

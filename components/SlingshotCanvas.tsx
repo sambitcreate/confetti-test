@@ -390,50 +390,50 @@ export const SlingshotCanvas: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-screen flex flex-col items-center justify-center bg-zinc-900 overflow-hidden ${
+      className={`relative w-full h-screen flex flex-col items-center justify-center bg-black text-white overflow-hidden ${
         !isHandMode ? "no-cursor" : ""
       }`}
     >
-        {/* Mode Toggle */}
-      <div className="fixed top-4 left-4 z-50 flex gap-2">
-        <button
-          onClick={() => setIsHandMode(false)}
-          className={`px-4 py-2 rounded-full font-bold transition-colors ${
-            !isHandMode
-              ? "bg-white metallic-white"
-              : "bg-zinc-800 metallic-white hover:bg-zinc-700"
-          }`}
-        >
-          Mouse
-        </button>
-        <button
-          onClick={() => setIsHandMode(true)}
-          className={`px-4 py-2 rounded-full font-bold transition-colors ${
-            isHandMode
-              ? "bg-green-500 metallic-white"
-              : "bg-zinc-800 metallic-white hover:bg-zinc-700"
-          }`}
-        >
-          Hand AI
-        </button>
+      {/* Mode + Instruction */}
+      <div className="fixed top-4 left-4 z-50 flex flex-col gap-3 pointer-events-none">
+        <div className="flex gap-2 pointer-events-auto">
+          <button
+            onClick={() => setIsHandMode(false)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${
+              !isHandMode
+                ? "bg-white text-black border-white/70 shadow-sm"
+                : "bg-transparent text-white/70 border-white/30 hover:bg-white/10"
+            }`}
+          >
+            Mouse
+          </button>
+          <button
+            onClick={() => setIsHandMode(true)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${
+              isHandMode
+                ? "bg-white text-black border-white/70 shadow-sm"
+                : "bg-transparent text-white/70 border-white/30 hover:bg-white/10"
+            }`}
+          >
+            Hand AI
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/70">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
+            {isHandMode ? "Pinch to drag" : "Click and drag"}
+          </span>
+          {!assetsLoaded && (
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] tracking-[0.16em]">
+              loading assets
+            </span>
+          )}
+        </div>
       </div>
 
       <HandController enabled={isHandMode} onUpdate={handleHandUpdate} />
 
-      {/* Content */}
-      <div className="relative z-10 text-center pointer-events-none select-none">
-        <p className="text-sm uppercase tracking-widest metallic-white mb-4">
-           {isHandMode ? 'Pinch to Drag' : 'Click and Drag'}
-        </p>
-        {!assetsLoaded && (
-          <div className="text-xs text-zinc-200/80 mb-3">
-            Loading confetti assets...
-          </div>
-        )}
-        <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 leading-tight">
-          CONFETTI<br />CANNON
-        </h1>
-      </div>
+      {/* Minimal Centerpiece */}
 
       {/* The "Hand" Cursor */}
       <div
