@@ -82,6 +82,10 @@ This application requires:
 - Position your hand clearly in the camera view
 - Check that your browser supports MediaPipe
 
+## Credits
+
+The slingshot user experience and interaction design is inspired by and based on the work by [GSAP (GreenSock)](https://codepen.io/GreenSock/pen/MYYvaLy?editors=1000). We appreciate their excellent animation library and creative examples that made this project possible.
+
 ## License
 
 Private project - All rights reserved.
