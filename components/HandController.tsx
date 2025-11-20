@@ -18,6 +18,11 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
     const requestRef = useRef<number>();
     const isRequestingPermissionRef = useRef(false);
     const loadedDataHandlerRef = useRef<(() => void) | null>(null);
+    const handStateRef = useRef({
+        isPinching: false,
+        lastCursor: { x: 0, y: 0 },
+        lastDetectedAt: 0
+    });
     const [isLoaded, setIsLoaded] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const [permissionError, setPermissionError] = useState<string | null>(null);
@@ -28,11 +33,16 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
 
         const startTimeMs = performance.now();
         const results = detectHands(videoRef.current, startTimeMs);
+        const now = performance.now();
 
         if (results && results.landmarks && results.landmarks.length > 0) {
             const landmarks = results.landmarks[0];
-            const pinching = isPinching(landmarks);
+            const pinching = isPinching(landmarks, handStateRef.current.isPinching);
             const cursor = getCursorPosition(landmarks, window.innerWidth, window.innerHeight);
+
+            handStateRef.current.isPinching = pinching;
+            handStateRef.current.lastCursor = cursor;
+            handStateRef.current.lastDetectedAt = now;
 
             onUpdate({
                 cursor,
@@ -40,10 +50,17 @@ export const HandController: React.FC<HandControllerProps> = ({ onUpdate, enable
                 isDetected: true
             });
         } else {
+            const timeSinceLast = now - handStateRef.current.lastDetectedAt;
+            const stillDetected = timeSinceLast < 150;
+
+            if (!stillDetected) {
+                handStateRef.current.isPinching = false;
+            }
+
             onUpdate({
-                cursor: { x: 0, y: 0 },
-                isPinching: false,
-                isDetected: false
+                cursor: handStateRef.current.lastCursor,
+                isPinching: handStateRef.current.isPinching,
+                isDetected: stillDetected
             });
         }
 

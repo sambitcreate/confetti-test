@@ -57,7 +57,7 @@ export const getDistance = (p1: {x: number, y: number}, p2: {x: number, y: numbe
 /**
  * Determines if the user is pinching based on Index finger tip (8) and Thumb tip (4)
  */
-export const isPinching = (landmarks: any[]) => {
+export const isPinching = (landmarks: any[], wasPinching: boolean = false) => {
     if (!landmarks || landmarks.length === 0) return false;
     
     // Landmarks are normalized [0, 1].
@@ -65,9 +65,11 @@ export const isPinching = (landmarks: any[]) => {
     const thumbTip = landmarks[4];
     const indexTip = landmarks[8];
     
-    // Distance threshold for a pinch (tunable)
+    // Small hysteresis to reduce flicker: tighter threshold to start, looser to release
+    const startThreshold = 0.14;
+    const releaseThreshold = 0.18;
     const distance = getDistance(thumbTip, indexTip);
-    return distance < 0.1; // 0.1 is a heuristic relative value
+    return wasPinching ? distance < releaseThreshold : distance < startThreshold;
 };
 
 /**
