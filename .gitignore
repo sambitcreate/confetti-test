@@ -24,5 +24,4 @@ dist-ssr
 *.sw?
 
 # Documentation
-README.md
 AGENTS.md
