@@ -23,13 +23,7 @@ A gesture-controlled slingshot game that uses hand tracking to create an interac
    npm install
    ```
 
-2. **Set up environment variables**:
-   Create a `.env.local` file and add your Gemini API key:
-   ```
-   GEMINI_API_KEY=your_api_key_here
-   ```
-
-3. **Run the development server**:
+2. **Run the development server**:
    ```bash
    npm run dev
    ```
@@ -88,4 +82,4 @@ The slingshot user experience and interaction design is inspired by and based on
 
 ## License
 
-Private project - All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
