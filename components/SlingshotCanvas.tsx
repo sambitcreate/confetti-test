@@ -31,7 +31,7 @@ export const SlingshotCanvas: React.FC = () => {
   const instructionsRef = useRef<HTMLElement>(null);
 
   // State
-  const [isHandMode, setIsHandMode] = useState(false);
+  const [isHandMode, setIsHandMode] = useState(true);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   // Logic Refs (Mutable state for animation loop)
@@ -479,6 +479,19 @@ export const SlingshotCanvas: React.FC = () => {
         ref={proxyRef}
         className="absolute top-0 left-0 w-full h-full z-30 touch-none"
       ></div>
+
+      {/* Credits */}
+      <div className="fixed bottom-4 left-4 z-50 pointer-events-none text-[11px] text-white/50">
+        <span className="uppercase tracking-[0.16em]">Thanks to</span>{" "}
+        <a
+          href="https://gsap.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline pointer-events-auto hover:text-white/80"
+        >
+          GSAP
+        </a>
+      </div>
     </div>
   );
 };
