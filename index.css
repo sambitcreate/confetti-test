@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-zinc-900 text-zinc-200 overflow-hidden m-0 p-0;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  @apply hidden;
+}
+
+.no-cursor {
+  @apply cursor-none;
+}
