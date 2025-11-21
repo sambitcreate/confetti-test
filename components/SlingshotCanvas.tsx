@@ -499,6 +499,17 @@ export const SlingshotCanvas: React.FC = () => {
           GSAP
         </a>
       </div>
+      <div className="fixed bottom-4 right-4 z-50 pointer-events-none text-[11px] text-white/50">
+        <span className="uppercase tracking-[0.16em]">by</span>{" "}
+        <a
+          href="https://bitcreate.studio"
+          target="_blank"
+          rel="noreferrer"
+          className="underline pointer-events-auto hover:text-white/80"
+        >
+          Sambit Biswas
+        </a>
+      </div>
     </div>
   );
 };
