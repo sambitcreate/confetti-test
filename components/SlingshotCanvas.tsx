@@ -23,6 +23,7 @@ export const SlingshotCanvas: React.FC = () => {
   const canvasRef = useRef<SVGSVGElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
   const proxyRef = useRef<HTMLDivElement>(null);
+  const releaseTimeoutRef = useRef<number | null>(null);
 
   // Element Refs for Slingshot Parts
   const rockRef = useRef<HTMLImageElement>(null);
@@ -110,6 +111,10 @@ export const SlingshotCanvas: React.FC = () => {
 
     return () => {
       isMounted = false;
+      if (releaseTimeoutRef.current) {
+        window.clearTimeout(releaseTimeoutRef.current);
+        releaseTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -337,26 +342,39 @@ export const SlingshotCanvas: React.FC = () => {
       // Update cursor/hand position
       if (xSetter.current) xSetter.current(cursor.x);
       if (ySetter.current) ySetter.current(cursor.y);
-      
+
       // Show/Hide hand based on detection
       if (handRef.current) {
-         gsap.to(handRef.current, { opacity: isDetected ? 1 : 0, duration: 0.2 });
+        gsap.to(handRef.current, { opacity: isDetected ? 1 : 0, duration: 0.2 });
       }
 
-      // State Machine with fail-safe release on lost detection
-      if (isDetected && isPinching && !state.current.isDrawing) {
-        startDrawing(cursor.x, cursor.y);
+      // Cancel any pending release when we get a confident pinch again
+      if (isDetected && isPinching && releaseTimeoutRef.current) {
+        window.clearTimeout(releaseTimeoutRef.current);
+        releaseTimeoutRef.current = null;
+      }
+
+      // State Machine with jitter protection: start on pinch, update while held,
+      // and debounce the release to mimic the mouse drag behaviour.
+      if (isDetected && isPinching) {
+        if (!state.current.isDrawing) {
+          startDrawing(cursor.x, cursor.y);
+        }
+
+        if (state.current.isDrawing) {
+          updateDrawing(cursor.x, cursor.y);
+        }
+
         return;
       }
 
-      if (isDetected && isPinching && state.current.isDrawing) {
-        updateDrawing(cursor.x, cursor.y);
-        return;
-      }
-
-      // Release if pinch opens OR detection is lost while drawing
-      if (state.current.isDrawing && (!isPinching || !isDetected)) {
-        endDrawing();
+      // Release if pinch opens OR detection is lost while drawing, but debounce
+      // slightly to avoid flicker from minor tracking noise.
+      if (state.current.isDrawing && !releaseTimeoutRef.current) {
+        releaseTimeoutRef.current = window.setTimeout(() => {
+          endDrawing();
+          releaseTimeoutRef.current = null;
+        }, 80);
       }
     },
     [isHandMode, startDrawing, updateDrawing, endDrawing]
