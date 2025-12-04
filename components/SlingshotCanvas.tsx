@@ -337,10 +337,10 @@ export const SlingshotCanvas: React.FC = () => {
       // Update cursor/hand position
       if (xSetter.current) xSetter.current(cursor.x);
       if (ySetter.current) ySetter.current(cursor.y);
-      
+
       // Show/Hide hand based on detection
       if (handRef.current) {
-         gsap.to(handRef.current, { opacity: isDetected ? 1 : 0, duration: 0.2 });
+        gsap.to(handRef.current, { opacity: isDetected ? 1 : 0, duration: 0.2 });
       }
 
       // State Machine with fail-safe release on lost detection
