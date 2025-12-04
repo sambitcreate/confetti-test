@@ -16,15 +16,26 @@ export const createHandLandmarker = async (): Promise<HandLandmarker> => {
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm"
     );
 
-    const instance = await HandLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath:
-          "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-        delegate: "GPU",
-      },
-      runningMode: "VIDEO",
-      numHands: 1,
-    });
+    // Firefox can fail GPU delegation on some setups. Try GPU first, then fall back to CPU.
+    const createWithDelegate = async (delegate: "GPU" | "CPU") =>
+      HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          delegate,
+        },
+        runningMode: "VIDEO",
+        numHands: 1,
+      });
+
+    let instance: HandLandmarker;
+
+    try {
+      instance = await createWithDelegate("GPU");
+    } catch (gpuError) {
+      console.warn("HandLandmarker GPU delegate failed, falling back to CPU", gpuError);
+      instance = await createWithDelegate("CPU");
+    }
 
     handLandmarker = instance;
     return instance;
